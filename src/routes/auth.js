@@ -15,66 +15,73 @@ const fromNumber = process.env.TWILIO_PHONE_NUMBER;
 const twilioClient = twilio(accountSid, authToken); 
 
 
+authRouter.post("/requestOtp", async (req, res) => {
+  const { phoneNumber } = req.body;
 
-authRouter.post("/requestOtp", async (req,res)=>{
+  try {
+    if (!phoneNumber || !/^\d{10}$/.test(phoneNumber)) {
+      return res.status(400).json({ message: "Invalid phone number" });
+    }
 
-    const { phoneNumber } = req.body;
+    const fullNumber = "+91" + phoneNumber;
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    try{
-             if (!phoneNumber || !/^\d{10}$/.test(phoneNumber)) {
-    return res.status(400).json({ message: "Invalid phone number" });
-  }
-  const fullNumber = "+91" + phoneNumber; // or adjust country code as needed
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-   await twilioClient.messages.create({
-      body: `: ${otp} is your one time password to proceed on DevTinder. It is valid for 2 minutes. Do not share OTP with anyone.`,
+    await twilioClient.messages.create({
+      body: `${otp} is your one-time password to proceed on DevTinder. It is valid for 2 minutes. Do not share OTP with anyone.`,
       from: fromNumber,
       to: fullNumber,
     });
-     await redisClient.setEx(`otp:${fullNumber}`, 120, JSON.stringify({
+
+    await redisClient.setEx(`otp:${fullNumber}`, 120, JSON.stringify({
       phoneNumber,
       otp,
       verified: false,
     }));
 
     res.json({ message: "OTP sent successfully" });
-    }
-    catch(e){
-            console.error("❌ Twilio Error:", e);
+  } catch (e) {
+    console.error("❌ Twilio Error:", e);
     res.status(500).json({ message: "Failed to send OTP", error: e.message });
-    }
-    
-})
+  }
+});
 
 
-authRouter.post("/verifyOtp",async(req,res)=>{
-      const { phoneNumber, otp } = req.body;
-      if (!phoneNumber || !otp || otp.length !== 6) {
+
+authRouter.post("/verifyOtp", async (req, res) => {
+  const { phoneNumber, otp } = req.body;
+
+  if (!phoneNumber || !otp || otp.length !== 6) {
     return res.status(400).json({ message: "Phone number and OTP are required" });
   }
-     const fullNumber = "+91" + phoneNumber;
 
-     try{
-          const value = await redisClient.get(`otp:${fullNumber}`);
+  const fullNumber = "+91" + phoneNumber;
+
+  try {
+    const value = await redisClient.get(`otp:${fullNumber}`);
     if (!value) {
       return res.status(400).json({ message: "OTP expired or invalid" });
     }
-        const otpData = JSON.parse(value);
-        if (otpData.otp !== otp) {
+
+    const otpData = JSON.parse(value);
+
+    if (otpData.otp !== otp) {
       return res.status(400).json({ message: "Incorrect OTP" });
     }
-       await redisClient.set(`otp:${fullNumber}`, JSON.stringify({
+
+    // ✅ Save updated data: remove `otp`, set `verified: true`
+    await redisClient.set(`otp:${fullNumber}`, JSON.stringify({
+      phoneNumber,
       verified: true
     }));
+
     res.status(200).json({ message: "Phone number verified successfully" });
 
+  } catch (err) {
+    console.error("❌ OTP Verification Error:", err);
+    res.status(500).json({ message: "Something went wrong", error: err.message });
+  }
+});
 
-     }
-     catch(e){
-        console.error("❌ OTP Verification Error:", err);
-        res.status(500).json({ message: "Something went wrong", error: err.message });
-     }
-})
 authRouter.post("/signup",async (req,res)=>{
     const userObj=req.body;
 
@@ -100,7 +107,7 @@ authRouter.post("/signup",async (req,res)=>{
             throw new Error("Password is not strong enough");
           }
      const hashPassword = await bcrypt.hash(userObj.password, 10);
-        
+
         console.log(hashPassword)
             const user = new UserModel({
                 firstName: userObj.firstName,
@@ -113,15 +120,30 @@ authRouter.post("/signup",async (req,res)=>{
                 password: hashPassword,
                 photoUrl: userObj.photoUrl,
             });
-            const fullNumber = "+91" + user.phoneNumber;
+           const fullNumber = "+91" + user.phoneNumber;
+            console.log("Full Number", fullNumber);
+             const value = await redisClient.get(`otp:${fullNumber}`);
+                if (!value) {
+    console.log("No verification record found.");
+    // e.g., prompt to verify or deny access
+    return res.status(401).json({ message: "Phone number not verified." });
+  }
+  const parsed = JSON.parse(value);
 
-              const value = await redisClient.get(`verified:${fullNumber}`);
+    
               if(!value){
                 return res.status(400).send("Internal server error: Mobile number verification failed");
               }
+ if (parsed.verified === true) {
 
            await user.save();
-    res.send("user added successfully",user);
+    return res.send("user added successfully",user);
+ }
+ else {
+    console.log("⛔ Phone not verified yet.");
+    return res.status(403).json({ message: "Phone number not verified." });
+  }
+    
     }
     catch(e){
         if(e instanceof Object ){
