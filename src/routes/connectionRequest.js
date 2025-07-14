@@ -100,7 +100,7 @@ connectionRequestRouter.post('/review/:status/:requestId',userAuth,async(req,res
       _id:requestId,
       toUserId:loggedInUser._id,
       status:"interested"
-   });
+   }).populate("toUserId",["firstName","lastName","about","photoUrl","age"]).populate("fromUserId",["firstName","lastName","about","photoUrl","age"]);
    if(!request){
     throw new Error("request not found")
    }
@@ -126,7 +126,7 @@ connectionRequestRouter.get('/review',userAuth, async(req,res)=>{
     const requests= await ConnectionRequestModel.find({
     toUserId:loggedInUser._id,
     status:"interested"
-})
+}).populate("toUserId",["firstName","lastName","about","photoUrl","age"]).populate("fromUserId",["firstName","lastName","about","photoUrl","age"]);
 console.log(requests)
 res.status(200).send(requests);
 

@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+const slugify = require("slugify");
 
 const blogSchema= new mongoose.Schema({
     author: {
@@ -18,11 +18,19 @@ const blogSchema= new mongoose.Schema({
     type: String,
     required: true,
   },
+  slug: {
+      type: String,
+     
+      unique: true
+    },  
   imageUrl: {
     type: String, 
     default: "",
   },
-  tags: [String],
+  tags:{
+type: [String],
+index:true
+  } ,
   likes: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -36,7 +44,31 @@ const blogSchema= new mongoose.Schema({
     },
   ],
 },{timestamps:true});
+
+blogSchema.index({ title: "text", content: "text" });
+
+
+
+blogSchema.pre("save", async function (next) {
+
+  console.log("HEre hu maiii")
+  if (!this.isModified("title")) return next();
+
+  let baseSlug = slugify(this.title, { lower: true, strict: true });
+  let slug = baseSlug;
+  let count = 1;
+
+  while (await mongoose.models.Blog.findOne({ slug })) {
+    slug = `${baseSlug}-${count++}`;
+  }
+
+  this.slug = slug;
+  next();
+});
+
  const BlogModel=mongoose.model("Blog", blogSchema)
+
+ 
 module.exports = {
     BlogModel
    };
