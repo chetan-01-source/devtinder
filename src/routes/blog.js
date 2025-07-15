@@ -41,6 +41,27 @@ const { tags, sort, page = 1, limit = 30, search } = req.query;
    }
 
 
+});
+
+blogRouter.get('/:userId',userAuth,async(req,res)=>{
+   const loggedInUser= req.user;
+   try{
+      const userId = req.params.userId;
+      console.log("user id is",userId);
+      if(!userId){
+         return res.send("Please enter the user id")
+      }
+      const userBlogs= await BlogModel.find({
+         author:userId
+      });
+      res.send({
+         message:"Blog for user successfully",
+         data:userBlogs
+      });   
+   }
+   catch(e){
+      res.status(400).send("Internal error"+e)
+   }
 })
 blogRouter.patch("/:id",userAuth,async(req,res)=>{
 
@@ -121,6 +142,25 @@ blogRouter.post('/',userAuth,async(req,res)=>{
      }
 })
 
+const blog=blogRouter.delete('/:blogId',userAuth,async(req,res)=>{
+
+   try{
+       const loggedInUser= req.user;
+   const blogId= req.params.blogId;
+   const deletedBlog= await BlogModel.deleteOne({
+      _id:blogId
+   });
+
+   res.send({
+      message:"Blog deleted successfully",
+      data:deletedBlog
+   })
+   }
+   catch(e){
+      res.status(400).send("Internal server error",e)
+   }
+  
+})
 
 
 module.exports={

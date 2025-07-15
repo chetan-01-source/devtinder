@@ -15,10 +15,12 @@ const authRouter= require('./routes/auth.js');
 const profileRouter = require('./routes/profile.js');
 const userRouter = require('./routes/user.js');
 const {blogRouter}= require('./routes/blog.js')
+const {commentRouter}= require('./routes/comment.js')
 
 app.use('/auth',authRouter);
 app.use('/profile',profileRouter);
 app.use('/user',userRouter);
+app.use('/comment',commentRouter);
 app.use('/blog',blogRouter);
 app.use('/request',connectionRequestRouter);
 app.get('/feed',async (req,res)=>{
