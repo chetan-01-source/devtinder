@@ -4,9 +4,8 @@ const {CommentModel }= require('../models/comment');
 const authRouter = require('./auth');
 const userAuth = require('../middlewares/userAuth')
 const {BlogModel}= require('../models/blog');
+
 commentRouter.post('/:blogId',userAuth,async (req,res)=>{
-
-
     try{
         const loggedInUser=req.user;
         const body= req.body;
@@ -45,7 +44,7 @@ commentRouter.post('/:blogId',userAuth,async (req,res)=>{
         res.status(400).send("Internal serer error"+e)
     }    
     
-})
+});
 
 commentRouter.get('/blog/:blogId',async(req,res)=>{
 
@@ -144,7 +143,8 @@ commentRouter.patch('/:commentId',userAuth,async(req,res)=>{
         res.status(400).send("Internal Error occured"+e);
     }
   
-})
+});
+
 module.exports={
     commentRouter
 }

@@ -6,7 +6,7 @@ const e = require('express');
 //get a profile
 
 profileRouter.get('/view',userAuth,async (req,res)=>{
-    res.send(req.user); 
+    res.send(req.user);         
 });
 
 profileRouter.patch('/edit',userAuth,async(req,res)=>{
