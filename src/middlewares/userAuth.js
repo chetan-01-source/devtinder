@@ -15,7 +15,7 @@ const verifyTokenAsync = (token, secret) => {
    const RefreshTokenHere=async (req,res,next)=>{
         const refreshToken = req.cookies.refreshToken;
           console.log("Refresh Token:", refreshToken);
-             const decodedrefresh = await verifyTokenAsync(refreshToken, "Cometchat");
+             const decodedrefresh = await verifyTokenAsync(refreshToken, process.env.JWT_SECRET);
                 const id= decodedrefresh.id;
                 const refrenceuser = await UserModel.findById({_id:id});
                 if(refrenceuser){
@@ -46,7 +46,7 @@ const token = req.cookies.token;
 
    try {
     console.log("Token:", token);
-  const decodedObj = await verifyTokenAsync(token, "Cometchat");
+  const decodedObj = await verifyTokenAsync(token, process.env.JWT_SECRET);
   console.log("Decoded Object:", decodedObj);
    const user = await UserModel.findById({_id:decodedObj.id});
     req.user = user;

@@ -85,14 +85,14 @@ refreshToken:{
 },{timestamps:true,optimisticConcurrency:true});
 userSchema.methods.getrefreshToken= async function(){
     const user = this;
-    const restoken = await jwt.sign({id: user._id},"Cometchat");
+    const restoken = await jwt.sign({id: user._id}, process.env.JWT_SECRET);
   console.log("Refresh Token in schema file is ", restoken);
             return restoken;
 }   
 
 userSchema.methods.getJwtToken= async function(){
     const user = this;
-    const token = await jwt.sign({id: user._id},"Cometchat",{
+    const token = await jwt.sign({id: user._id}, process.env.JWT_SECRET,{
                 expiresIn:"24h"
   });
 
