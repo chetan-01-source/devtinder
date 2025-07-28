@@ -2,7 +2,8 @@ require('dotenv').config();
 const express = require('express')
 const app = new express()
 require('dotenv').config();
-const {connectDB}= require('./config/database.js')
+const {connectDB}= require('./config/database.js');
+const {connectKafka}= require('./utils/kafka.js')
 const {UserModel} = require("./models/user.js");
 const {connectionRequestRouter} = require('./routes/connectionRequest.js')
 const cookieParser = require('cookie-parser');
@@ -48,8 +49,9 @@ connectDB().then(async () => {
     
     await redisClient.connect();
      console.log("✅ Connected to Redis Cloud");
+    await connectKafka();
     app.listen(3000,()=>{
-    console.log("Server is running on port 3000");
+    console.log("User-Post service running on port 3000");
 })
 }).catch((error) => {
     console.error('Database connection error:', error);

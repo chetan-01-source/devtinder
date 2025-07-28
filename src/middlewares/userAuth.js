@@ -1,7 +1,7 @@
 const {UserModel} = require('../models/user');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
-
+const {sendMessage} = require('../utils/kafka.js');
 
 const verifyTokenAsync = (token, secret) => {
   return new Promise((resolve, reject) => {
@@ -27,21 +27,36 @@ const verifyTokenAsync = (token, secret) => {
                           newtoken=token;
                             res.clearCookie('token');
                             res.cookie('token',newtoken);
-         });    
-                 req.user = refrenceuser
-                    }
+                            sendMessage('user_token_refreshed', {
+                              userId: refrenceuser._id,
+                              emailId: refrenceuser.emailId,
+                              firstName: refrenceuser.firstName,
+                              lastName: refrenceuser.lastName,
+                              token: newtoken
+                            });
+                            req.user = refrenceuser;  
+                    });
                 }
-
-      
         next();
    }
+
+  }
  const userAuth= async (req, res, next) => {
 
     console.log("User Auth Middleware called");
-const token = req.cookies.token;
-        if (!token) {   
-
-        return res.status(401).send("Access denied. No token provided.");
+   let token;
+   const authHeader = req.headers.authorization;
+   if (authHeader && authHeader.startsWith('Bearer ')) {
+      console.log("Token found in headers");
+     token = authHeader.split(' ')[1];
+   } else {
+      console.log("No token found in headers, checking cookies");
+     token = req.cookies.token;
+   }
+    console.log("Token:", token);
+   
+   if (!token) {
+     return res.status(401).send("Access denied. No token provided.");
     }
 
    try {
@@ -50,8 +65,11 @@ const token = req.cookies.token;
   console.log("Decoded Object:", decodedObj);
    const user = await UserModel.findById({_id:decodedObj.id});
     req.user = user;
-  next();
+    console.log("User found:", user);
+    
+    next();
 } catch (err) {
+
   if (err.name === 'TokenExpiredError') {
       console.log("Token expired, checking for refresh token");
     if (req.cookies.refreshToken) {

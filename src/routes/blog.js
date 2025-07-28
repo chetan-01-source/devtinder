@@ -3,7 +3,10 @@ const blogRouter = express.Router();
 const {BlogModel} = require('../models/blog.js')
 const {BlogSchema}= require('../utils/blogSchema.js')
 const userAuth = require('../middlewares/userAuth.js')
-
+const cloudinary = require("../config/cloudinary.js");
+const upload = require("../config/multerConfig.js");
+const streamifier = require("streamifier");
+const {sendMessage} = require('../utils/kafka.js');
 //create a new blog
 
 blogRouter.get('/feed',userAuth,async(req,res)=>{
@@ -107,14 +110,12 @@ blogRouter.post('/',userAuth,async(req,res)=>{
      try{
         const blogData = req.body;
         BlogSchema.safeParse(blogData);
-        console.log(" aa. gayaaa")
         const loggedInUser= req.user;
          blogData.author=loggedInUser._id;
         
          const blog= new BlogModel({
             author:blogData.author,
             title:blogData.title,
-            imageUrl:blogData.imageUrl,
             content:blogData.content,
             tags:blogData.tags
          });
@@ -125,6 +126,8 @@ blogRouter.post('/',userAuth,async(req,res)=>{
          const populatedBlog = await BlogModel.findOne({
             _id:blog._id
          }).populate("author",["firstName","lastName","about","age","photoUrl"]);
+         await sendMessage('blog_created', populatedBlog);
+         
          res.send({
             message:"Blog saved successfully",
             data: populatedBlog
@@ -142,6 +145,44 @@ blogRouter.post('/',userAuth,async(req,res)=>{
      }
 })
 
+blogRouter.post('/upload-blog-image/:blogId',upload.single("blogImage"),async (req, res) => {
+  try {
+    const file = req.file;
+      const blogId = req.params.blogId;
+
+    if (!file) {
+      return res.status(400).json({ message: "No image file uploaded" });
+    }
+
+    const streamUpload = (buffer) => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "blog_images" },
+          (error, result) => {
+            if (result) resolve(result);
+            else reject(error);
+          }
+        );
+        streamifier.createReadStream(buffer).pipe(stream);
+      });
+    };
+
+    const result = await streamUpload(file.buffer);
+      const blog = await BlogModel.findByIdAndUpdate(
+         blogId,
+         { imageUrl: result.secure_url },
+         { new: true }
+      );
+     
+    res.status(200).json({
+      success: true,
+      imageUrl: result.secure_url, // 👈 return this to frontend
+    });
+  } catch (err) {
+    console.error("Blog image upload error:", err);
+    res.status(500).json({ message: "Upload failed" });
+  }
+});
 const blog=blogRouter.delete('/:blogId',userAuth,async(req,res)=>{
 
    try{

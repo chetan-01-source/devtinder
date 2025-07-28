@@ -11,7 +11,7 @@ const redisClient = require('../config/redisClient.js')
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const fromNumber = process.env.TWILIO_PHONE_NUMBER;
-
+const {sendMessage} = require('../utils/kafka.js');
 const twilioClient = twilio(accountSid, authToken); 
 
 
@@ -195,7 +195,14 @@ authRouter.post('/login',async (req,res)=>{
               await user.save();
               res.cookie('refreshToken', refstoken);
               res.cookie('token',restoken) ;
-      
+         await sendMessage('user_logged_in', {
+            userId: user._id,
+            emailId: user.emailId,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            photoUrl: user.photoUrl,
+            token: restoken
+          })
         res.send("Login successful");
     }
     catch(e){
@@ -210,6 +217,10 @@ authRouter.post('/logout',userAuth,async(req,res)=>{
     res.clearCookie('refreshToken');
     user.refreshToken = '';
     await user.save();
+    await sendMessage('user_logged_out', {
+            userId: user._id,
+          })
+  
     res.send("Logout successful");
 })
 module.exports = authRouter;
